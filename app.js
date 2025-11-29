@@ -316,4 +316,125 @@ function PerspectiveCorrector() {
       e('div', { className: 'bg-white rounded-xl shadow-lg p-6 mb-6' },
         e('div', { className: 'flex flex-wrap gap-4 mb-6' },
           e('label', { className: 'flex-1 min-w-[200px]' },
-            e('div', { className: 'flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text
+            e('div', { className: 'flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer transition' },
+              e(Upload),
+              e('span', null, 'Завантажити фото')
+            ),
+            e('input', {
+              type: 'file',
+              accept: 'image/*',
+              onChange: handleImageUpload,
+              className: 'hidden'
+            })
+          ),
+          
+          image && e('button', {
+            onClick: reset,
+            className: 'flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition'
+          }, e(RotateCcw), e('span', null, 'Скинути')),
+          
+          image && e('button', {
+            onClick: applyPerspectiveTransform,
+            className: 'flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition'
+          }, e(Move), e('span', null, 'Виправити перспективу')),
+          
+          result && e('button', {
+            onClick: downloadResult,
+            className: 'flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg transition'
+          }, e(Download), e('span', null, 'Зберегти'))
+        ),
+        
+        image && e('div', null,
+          e('div', { className: 'bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6' },
+            e('p', { className: 'text-sm text-blue-800' },
+              e('strong', null, 'Інструкція: '),
+              'Перетягніть сині точки на кути об\'єкта, який потрібно випрямити. Точки пронумеровані 1-4 за годинниковою стрілкою, починаючи з верхнього лівого кута.'
+            )
+          ),
+          
+          e('div', { className: 'bg-white border border-gray-200 rounded-lg p-4 mb-6' },
+            e('h3', { className: 'font-semibold text-gray-700 mb-3' }, 'Налаштування розміру результату'),
+            e('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4 items-end' },
+              e('div', null,
+                e('label', { className: 'block text-sm text-gray-600 mb-1' }, 'Ширина (px)'),
+                e('input', {
+                  type: 'number',
+                  value: outputWidth,
+                  onChange: (ev) => setOutputWidth(ev.target.value),
+                  placeholder: 'Авто',
+                  className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                })
+              ),
+              e('div', null,
+                e('label', { className: 'block text-sm text-gray-600 mb-1' }, 'Висота (px)'),
+                e('input', {
+                  type: 'number',
+                  value: outputHeight,
+                  onChange: (ev) => setOutputHeight(ev.target.value),
+                  placeholder: 'Авто',
+                  className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                })
+              ),
+              e('div', null,
+                e('label', { className: 'flex items-center gap-2 cursor-pointer' },
+                  e('input', {
+                    type: 'checkbox',
+                    checked: maintainAspect,
+                    onChange: (ev) => setMaintainAspect(ev.target.checked),
+                    className: 'w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500'
+                  }),
+                  e('span', { className: 'text-sm text-gray-700' }, 'Зберегти пропорції')
+                )
+              )
+            ),
+            e('p', { className: 'text-xs text-gray-500 mt-2' },
+              'Залиште поля порожніми для автоматичного розміру. Якщо пропорції збережено, зображення вписується в заданий розмір з прозорим фоном.'
+            )
+          )
+        ),
+        
+        e('div', { className: 'grid md:grid-cols-2 gap-6' },
+          image && e('div', null,
+            e('h3', { className: 'font-semibold text-gray-700 mb-3' }, 'Оригінал (перетягніть точки)'),
+            e('div', { className: 'border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-100' },
+              e('canvas', {
+                ref: canvasRef,
+                onMouseDown: handleCanvasClick,
+                onMouseMove: handleCanvasMove,
+                onMouseUp: handleCanvasUp,
+                onMouseLeave: handleCanvasUp,
+                className: 'w-full cursor-crosshair'
+              })
+            )
+          ),
+          
+          result && e('div', null,
+            e('h3', { className: 'font-semibold text-gray-700 mb-3' }, 'Виправлений результат'),
+            e('div', { 
+              className: 'border-2 border-green-300 rounded-lg overflow-hidden bg-gray-100',
+              style: {
+                backgroundImage: 'repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%) 50% / 20px 20px'
+              }
+            },
+              e('img', { src: result, alt: 'Result', className: 'w-full' })
+            )
+          )
+        ),
+        
+        e('canvas', { ref: resultCanvasRef, className: 'hidden' })
+      ),
+      
+      e('div', { className: 'bg-white rounded-xl shadow-lg p-6' },
+        e('h3', { className: 'font-semibold text-gray-700 mb-3' }, 'Поради для кращого результату:'),
+        e('ul', { className: 'space-y-2 text-gray-600' },
+          e('li', null, '• Фотографуйте в добре освітленому місці'),
+          e('li', null, '• Контрастний фон полегшить автоматичне виявлення'),
+          e('li', null, '• Перетягуйте точки якомога точніше на кути об\'єкта'),
+          e('li', null, '• Для карток та ігрових полів намагайтеся тримати камеру максимально паралельно поверхні')
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.render(e(PerspectiveCorrector), document.getElementById('root'));
