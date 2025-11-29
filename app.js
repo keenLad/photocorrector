@@ -1,7 +1,33 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Upload, RotateCcw, Download, Move } from 'lucide-react';
+const { useState, useRef, useEffect, createElement: e } = React;
 
-export default function PerspectiveCorrector() {
+// Іконки як SVG компоненти
+const Upload = () => e('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+  e('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
+  e('polyline', { points: '17 8 12 3 7 8' }),
+  e('line', { x1: 12, x2: 12, y1: 3, y2: 15 })
+);
+
+const RotateCcw = () => e('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+  e('polyline', { points: '1 4 1 10 7 10' }),
+  e('path', { d: 'M3.51 15a9 9 0 1 0 2.13-9.36L1 10' })
+);
+
+const Move = () => e('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+  e('polyline', { points: '5 9 2 12 5 15' }),
+  e('polyline', { points: '9 5 12 2 15 5' }),
+  e('polyline', { points: '15 19 12 22 9 19' }),
+  e('polyline', { points: '19 9 22 12 19 15' }),
+  e('line', { x1: 2, x2: 22, y1: 12, y2: 12 }),
+  e('line', { x1: 12, x2: 12, y1: 2, y2: 22 })
+);
+
+const Download = () => e('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+  e('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
+  e('polyline', { points: '7 10 12 15 17 10' }),
+  e('line', { x1: 12, x2: 12, y1: 15, y2: 3 })
+);
+
+function PerspectiveCorrector() {
   const [image, setImage] = useState(null);
   const [corners, setCorners] = useState([]);
   const [draggingCorner, setDraggingCorner] = useState(null);
@@ -18,11 +44,11 @@ export default function PerspectiveCorrector() {
     }
   }, [image, corners]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = (ev) => {
         const img = new Image();
         img.onload = () => {
           setImage(img);
@@ -37,7 +63,7 @@ export default function PerspectiveCorrector() {
           ]);
           setResult(null);
         };
-        img.src = event.target.result;
+        img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -85,14 +111,14 @@ export default function PerspectiveCorrector() {
     }
   };
 
-  const handleCanvasClick = (e) => {
+  const handleCanvasClick = (event) => {
     if (!image) return;
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const scale = canvas.width / rect.width;
-    const x = (e.clientX - rect.left) * scale;
-    const y = (e.clientY - rect.top) * scale;
+    const x = (event.clientX - rect.left) * scale;
+    const y = (event.clientY - rect.top) * scale;
     
     const imageScale = image.width / canvas.width;
     const actualX = x * imageScale;
@@ -110,14 +136,14 @@ export default function PerspectiveCorrector() {
     }
   };
 
-  const handleCanvasMove = (e) => {
+  const handleCanvasMove = (event) => {
     if (draggingCorner === null || !image) return;
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const scale = canvas.width / rect.width;
-    const x = (e.clientX - rect.left) * scale;
-    const y = (e.clientY - rect.top) * scale;
+    const x = (event.clientX - rect.left) * scale;
+    const y = (event.clientY - rect.top) * scale;
     
     const imageScale = image.width / canvas.width;
     const actualX = Math.max(0, Math.min(x * imageScale, image.width));
@@ -161,41 +187,33 @@ export default function PerspectiveCorrector() {
     const naturalWidth = Math.round(Math.max(width1, width2));
     const naturalHeight = Math.round(Math.max(height1, height2));
 
-    // Визначаємо фінальні розміри
     let finalWidth, finalHeight, transformWidth, transformHeight, offsetX, offsetY;
     
     if (outputWidth && outputHeight) {
-      // Користувач задав конкретні розміри
       finalWidth = parseInt(outputWidth);
       finalHeight = parseInt(outputHeight);
       
       if (maintainAspect) {
-        // Вписуємо зображення зберігаючи пропорції
         const aspectRatio = naturalWidth / naturalHeight;
         const targetAspect = finalWidth / finalHeight;
         
         if (aspectRatio > targetAspect) {
-          // Зображення ширше - підганяємо по ширині
           transformWidth = finalWidth;
           transformHeight = Math.round(finalWidth / aspectRatio);
         } else {
-          // Зображення вище - підганяємо по висоті
           transformHeight = finalHeight;
           transformWidth = Math.round(finalHeight * aspectRatio);
         }
         
-        // Центруємо
         offsetX = Math.round((finalWidth - transformWidth) / 2);
         offsetY = Math.round((finalHeight - transformHeight) / 2);
       } else {
-        // Розтягуємо на весь розмір
         transformWidth = finalWidth;
         transformHeight = finalHeight;
         offsetX = 0;
         offsetY = 0;
       }
     } else {
-      // Використовуємо природні розміри
       finalWidth = naturalWidth;
       finalHeight = naturalHeight;
       transformWidth = naturalWidth;
@@ -209,7 +227,6 @@ export default function PerspectiveCorrector() {
     resultCanvas.height = finalHeight;
     const ctx = resultCanvas.getContext('2d');
     
-    // Очищуємо canvas (прозорий фон)
     ctx.clearRect(0, 0, finalWidth, finalHeight);
 
     transformImage(image, ctx, transformWidth, transformHeight, orderedCorners, offsetX, offsetY);
@@ -291,154 +308,12 @@ export default function PerspectiveCorrector() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">
-          Виправлення перспективи
-        </h1>
-        <p className="text-gray-600 mb-8 text-center">
-          Завантажте фото та перетягніть кути для виправлення викривлення
-        </p>
-
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex flex-wrap gap-4 mb-6">
-            <label className="flex-1 min-w-[200px]">
-              <div className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer transition">
-                <Upload size={20} />
-                <span>Завантажити фото</span>
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </label>
-
-            {image && (
-              <>
-                <button
-                  onClick={reset}
-                  className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition"
-                >
-                  <RotateCcw size={20} />
-                  <span>Скинути</span>
-                </button>
-                <button
-                  onClick={applyPerspectiveTransform}
-                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition"
-                >
-                  <Move size={20} />
-                  <span>Виправити перспективу</span>
-                </button>
-              </>
-            )}
-
-            {result && (
-              <button
-                onClick={downloadResult}
-                className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg transition"
-              >
-                <Download size={20} />
-                <span>Зберегти</span>
-              </button>
-            )}
-          </div>
-
-          {image && (
-            <>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
-                  <strong>Інструкція:</strong> Перетягніть сині точки на кути об'єкта, який потрібно випрямити. 
-                  Точки пронумеровані 1-4 за годинниковою стрілкою, починаючи з верхнього лівого кута.
-                </p>
-              </div>
-              
-              <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold text-gray-700 mb-3">Налаштування розміру результату</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Ширина (px)</label>
-                    <input
-                      type="number"
-                      value={outputWidth}
-                      onChange={(e) => setOutputWidth(e.target.value)}
-                      placeholder="Авто"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Висота (px)</label>
-                    <input
-                      type="number"
-                      value={outputHeight}
-                      onChange={(e) => setOutputHeight(e.target.value)}
-                      placeholder="Авто"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={maintainAspect}
-                        onChange={(e) => setMaintainAspect(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">Зберегти пропорції</span>
-                    </label>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Залиште поля порожніми для автоматичного розміру. Якщо пропорції збережено, зображення вписується в заданий розмір з прозорим фоном.
-                </p>
-              </div>
-            </>
-          )}
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {image && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-3">Оригінал (перетягніть точки)</h3>
-                <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-100">
-                  <canvas
-                    ref={canvasRef}
-                    onMouseDown={handleCanvasClick}
-                    onMouseMove={handleCanvasMove}
-                    onMouseUp={handleCanvasUp}
-                    onMouseLeave={handleCanvasUp}
-                    className="w-full cursor-crosshair"
-                  />
-                </div>
-              </div>
-            )}
-
-            {result && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-3">Виправлений результат</h3>
-                <div className="border-2 border-green-300 rounded-lg overflow-hidden bg-gray-100" style={{
-                  backgroundImage: 'repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%) 50% / 20px 20px'
-                }}>
-                  <img src={result} alt="Result" className="w-full" />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <canvas ref={resultCanvasRef} className="hidden" />
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="font-semibold text-gray-700 mb-3">Поради для кращого результату:</h3>
-          <ul className="space-y-2 text-gray-600">
-            <li>• Фотографуйте в добре освітленому місці</li>
-            <li>• Контрастний фон полегшить автоматичне виявлення</li>
-            <li>• Перетягуйте точки якомога точніше на кути об'єкта</li>
-            <li>• Для карток та ігрових полів намагайтеся тримати камеру максимально паралельно поверхні</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
+  return e('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8' },
+    e('div', { className: 'max-w-6xl mx-auto' },
+      e('h1', { className: 'text-4xl font-bold text-gray-800 mb-2 text-center' }, 'Виправлення перспективи'),
+      e('p', { className: 'text-gray-600 mb-8 text-center' }, 'Завантажте фото та перетягніть кути для виправлення викривлення'),
+      
+      e('div', { className: 'bg-white rounded-xl shadow-lg p-6 mb-6' },
+        e('div', { className: 'flex flex-wrap gap-4 mb-6' },
+          e('label', { className: 'flex-1 min-w-[200px]' },
+            e('div', { className: 'flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text
