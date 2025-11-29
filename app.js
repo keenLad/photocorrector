@@ -35,6 +35,7 @@ function PerspectiveCorrector() {
   const [outputWidth, setOutputWidth] = useState('');
   const [outputHeight, setOutputHeight] = useState('');
   const [maintainAspect, setMaintainAspect] = useState(true);
+  const [scaleMode, setScaleMode] = useState('fit');
   const canvasRef = useRef(null);
   const resultCanvasRef = useRef(null);
 
@@ -197,16 +198,27 @@ function PerspectiveCorrector() {
         const aspectRatio = naturalWidth / naturalHeight;
         const targetAspect = finalWidth / finalHeight;
         
-        if (aspectRatio > targetAspect) {
-          transformWidth = finalWidth;
-          transformHeight = Math.round(finalWidth / aspectRatio);
+        if (scaleMode === 'fit') {
+          if (aspectRatio > targetAspect) {
+            transformWidth = finalWidth;
+            transformHeight = Math.round(finalWidth / aspectRatio);
+          } else {
+            transformHeight = finalHeight;
+            transformWidth = Math.round(finalHeight * aspectRatio);
+          }
+          offsetX = Math.round((finalWidth - transformWidth) / 2);
+          offsetY = Math.round((finalHeight - transformHeight) / 2);
         } else {
-          transformHeight = finalHeight;
-          transformWidth = Math.round(finalHeight * aspectRatio);
+          if (aspectRatio > targetAspect) {
+            transformHeight = finalHeight;
+            transformWidth = Math.round(finalHeight * aspectRatio);
+          } else {
+            transformWidth = finalWidth;
+            transformHeight = Math.round(finalWidth / aspectRatio);
+          }
+          offsetX = Math.round((finalWidth - transformWidth) / 2);
+          offsetY = Math.round((finalHeight - transformHeight) / 2);
         }
-        
-        offsetX = Math.round((finalWidth - transformWidth) / 2);
-        offsetY = Math.round((finalHeight - transformHeight) / 2);
       } else {
         transformWidth = finalWidth;
         transformHeight = finalHeight;
@@ -229,12 +241,12 @@ function PerspectiveCorrector() {
     
     ctx.clearRect(0, 0, finalWidth, finalHeight);
 
-    transformImage(image, ctx, transformWidth, transformHeight, orderedCorners, offsetX, offsetY);
+    transformImage(image, ctx, transformWidth, transformHeight, orderedCorners, offsetX, offsetY, finalWidth, finalHeight);
 
     setResult(resultCanvas.toDataURL('image/png'));
   };
 
-  const transformImage = (img, ctx, width, height, srcCorners, offsetX, offsetY) => {
+  const transformImage = (img, ctx, width, height, srcCorners, offsetX, offsetY, finalWidth, finalHeight) => {
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = img.width;
     tempCanvas.height = img.height;
@@ -263,7 +275,24 @@ function PerspectiveCorrector() {
       }
     }
 
-    ctx.putImageData(resultData, offsetX, offsetY);
+    const tempResultCanvas = document.createElement('canvas');
+    tempResultCanvas.width = width;
+    tempResultCanvas.height = height;
+    const tempResultCtx = tempResultCanvas.getContext('2d');
+    tempResultCtx.putImageData(resultData, 0, 0);
+    
+    if (scaleMode === 'crop' && maintainAspect && outputWidth && outputHeight) {
+      const sourceX = Math.max(0, -offsetX);
+      const sourceY = Math.max(0, -offsetY);
+      const sourceWidth = Math.min(width, finalWidth + sourceX);
+      const sourceHeight = Math.min(height, finalHeight + sourceY);
+      const destX = Math.max(0, offsetX);
+      const destY = Math.max(0, offsetY);
+      
+      ctx.drawImage(tempResultCanvas, sourceX, sourceY, sourceWidth - sourceX, sourceHeight - sourceY, destX, destY, sourceWidth - sourceX, sourceHeight - sourceY);
+    } else {
+      ctx.putImageData(resultData, offsetX, offsetY);
+    }
   };
 
   const mapPoint = (x, y, width, height, srcCorners) => {
@@ -354,7 +383,7 @@ function PerspectiveCorrector() {
           
           e('div', { className: 'bg-white border border-gray-200 rounded-lg p-4 mb-6' },
             e('h3', { className: 'font-semibold text-gray-700 mb-3' }, 'Налаштування розміру результату'),
-            e('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4 items-end' },
+            e('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-4' },
               e('div', null,
                 e('label', { className: 'block text-sm text-gray-600 mb-1' }, 'Ширина (px)'),
                 e('input', {
@@ -374,21 +403,53 @@ function PerspectiveCorrector() {
                   placeholder: 'Авто',
                   className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                 })
+              )
+            ),
+            
+            e('div', { className: 'flex flex-wrap gap-4' },
+              e('label', { className: 'flex items-center gap-2 cursor-pointer' },
+                e('input', {
+                  type: 'checkbox',
+                  checked: maintainAspect,
+                  onChange: (ev) => setMaintainAspect(ev.target.checked),
+                  className: 'w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500'
+                }),
+                e('span', { className: 'text-sm text-gray-700' }, 'Зберегти пропорції')
               ),
-              e('div', null,
+              
+              maintainAspect && outputWidth && outputHeight && e('div', { className: 'flex gap-2 ml-4' },
                 e('label', { className: 'flex items-center gap-2 cursor-pointer' },
                   e('input', {
-                    type: 'checkbox',
-                    checked: maintainAspect,
-                    onChange: (ev) => setMaintainAspect(ev.target.checked),
-                    className: 'w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500'
+                    type: 'radio',
+                    name: 'scaleMode',
+                    value: 'fit',
+                    checked: scaleMode === 'fit',
+                    onChange: (ev) => setScaleMode(ev.target.value),
+                    className: 'w-4 h-4 text-blue-600'
                   }),
-                  e('span', { className: 'text-sm text-gray-700' }, 'Зберегти пропорції')
+                  e('span', { className: 'text-sm text-gray-700' }, 'Вписати (прозорий фон)')
+                ),
+                e('label', { className: 'flex items-center gap-2 cursor-pointer' },
+                  e('input', {
+                    type: 'radio',
+                    name: 'scaleMode',
+                    value: 'crop',
+                    checked: scaleMode === 'crop',
+                    onChange: (ev) => setScaleMode(ev.target.value),
+                    className: 'w-4 h-4 text-blue-600'
+                  }),
+                  e('span', { className: 'text-sm text-gray-700' }, 'Обрізати (заповнити)')
                 )
               )
             ),
+            
             e('p', { className: 'text-xs text-gray-500 mt-2' },
-              'Залиште поля порожніми для автоматичного розміру. Якщо пропорції збережено, зображення вписується в заданий розмір з прозорим фоном.'
+              'Залиште поля порожніми для автоматичного розміру. ' +
+              (maintainAspect && outputWidth && outputHeight 
+                ? (scaleMode === 'fit' 
+                  ? 'Режим "Вписати" додає прозорий фон навколо зображення.'
+                  : 'Режим "Обрізати" заповнює весь кадр, обрізаючи краї зображення.')
+                : '')
             )
           )
         ),
